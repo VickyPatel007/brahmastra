@@ -21,32 +21,28 @@ from backend.logger import get_logger
 logger = get_logger("brahmastra.backend")
 
 # ── DB Import ─────────────────────────────────────────────────────────────────
-try:
-    from backend.database import get_db, engine, Base
-    from backend.models import Metric, ThreatScore, SystemEvent, User
-    from backend.schemas import (
-        MetricResponse,
-        ThreatScoreResponse,
-        UserCreate,
-        UserLogin,
-        UserResponse,
-        Token,
-        RefreshToken,
-        PasswordResetRequest,
-        PasswordResetConfirm,
-    )
-    from backend.auth import (
-        get_password_hash,
-        verify_password,
-        create_access_token,
-        create_refresh_token,
-        verify_refresh_token,
-        get_current_user_email,
-    )
-    DB_ENABLED = True
-except ImportError as e:
-    DB_ENABLED = False
-    logger.warning(f"⚠️ DB not configured, using in-memory storage. Error: {e}")
+from backend.database import get_db, engine, Base
+from backend.models import Metric, ThreatScore, SystemEvent, User
+from backend.schemas import (
+    MetricResponse,
+    ThreatScoreResponse,
+    UserCreate,
+    UserLogin,
+    UserResponse,
+    Token,
+    RefreshToken,
+    PasswordResetRequest,
+    PasswordResetConfirm,
+)
+from backend.auth import (
+    get_password_hash,
+    verify_password,
+    create_access_token,
+    create_refresh_token,
+    verify_refresh_token,
+    get_current_user_email,
+)
+DB_ENABLED = True
 
 # ── Threat Detection + Email ──────────────────────────────────────────────────
 try:
