@@ -72,6 +72,30 @@ except ImportError:
     ANOMALY_ENABLED = False
     logger.warning("⚠️ Anomaly detection not available")
 
+# ── Rate Limiter ──────────────────────────────────────────────────────────────
+try:
+    from backend.rate_limiter import rate_limiter
+    RATE_LIMITER_ENABLED = True
+except ImportError:
+    RATE_LIMITER_ENABLED = False
+    logger.warning("⚠️ Rate limiter not available")
+
+# ── Backup System ────────────────────────────────────────────────────────────
+try:
+    from backend.backup_system import backup_manager
+    BACKUP_ENABLED = True
+except ImportError:
+    BACKUP_ENABLED = False
+    logger.warning("⚠️ Backup system not available")
+
+# ── Performance Tracker ──────────────────────────────────────────────────────
+try:
+    from backend.performance import perf_tracker
+    PERF_ENABLED = True
+except ImportError:
+    PERF_ENABLED = False
+    logger.warning("⚠️ Performance tracker not available")
+
 # ── Config ────────────────────────────────────────────────────────────────────
 SERVER_HOST = os.getenv("SERVER_HOST", "http://15.206.82.159")
 _cors_raw = os.getenv(
@@ -117,7 +141,41 @@ async def ip_ban_middleware(request: Request, call_next):
                     "ban_expires_in_seconds": seconds_left,
                 },
             )
-    return await call_next(request)
+    # ── Rate Limiting ──
+    if RATE_LIMITER_ENABLED:
+        client_ip = request.client.host if request.client else "unknown"
+        category = rate_limiter.classify_request(str(request.url.path), request.method)
+        allowed, info = rate_limiter.check(client_ip, category)
+        if not allowed:
+            logger.warning(f"🚦 Rate limited: {client_ip} ({category}) - retry in {info['retry_after']}s")
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "detail": "Too many requests. Please slow down.",
+                    "retry_after": info["retry_after"],
+                    "category": info["category"],
+                    "limit": info["limit"],
+                },
+                headers={"Retry-After": str(info["retry_after"])},
+            )
+
+    # ── Performance Tracking ──
+    if PERF_ENABLED:
+        import time as _time
+        _start = _time.time()
+
+    response = await call_next(request)
+
+    if PERF_ENABLED:
+        duration_ms = (_time.time() - _start) * 1000
+        perf_tracker.record(
+            request.method,
+            str(request.url.path),
+            response.status_code,
+            duration_ms,
+        )
+
+    return response
 
 
 # ── Global Exception Handler ──────────────────────────────────────────────────
@@ -157,17 +215,24 @@ class Incident(BaseModel):
 # ── Startup ───────────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup_event():
-    logger.info("🚀 Brahmastra v0.3.0 Starting...")
+    logger.info("🚀 Brahmastra v0.4.0 Starting...")
     logger.info(f"   SERVER_HOST     : {SERVER_HOST}")
     logger.info(f"   CORS_ORIGINS    : {CORS_ORIGINS}")
     logger.info(f"   DB_ENABLED      : {DB_ENABLED}")
     logger.info(f"   THREAT_ENGINE   : {THREAT_ENGINE_ENABLED}")
+    logger.info(f"   RATE_LIMITER    : {RATE_LIMITER_ENABLED}")
+    logger.info(f"   BACKUP_SYSTEM   : {BACKUP_ENABLED}")
+    logger.info(f"   PERF_TRACKER    : {PERF_ENABLED}")
     if DB_ENABLED:
         try:
             Base.metadata.create_all(bind=engine)
             logger.info("✅ Database tables verified")
         except Exception as e:
             logger.error(f"❌ Table creation failed: {e}")
+    # Start backup scheduler
+    if BACKUP_ENABLED:
+        backup_manager.start_scheduler()
+        logger.info("✅ Backup scheduler started")
 
 
 # ── Root + Health (Public) ────────────────────────────────────────────────────
@@ -816,6 +881,86 @@ async def websocket_endpoint(websocket: WebSocket):
             await asyncio.sleep(5)
     except Exception as e:
         logger.info(f"WebSocket closed ({email}): {e}")
+
+
+# ============================================================================
+# RATE LIMITER ENDPOINTS
+# ============================================================================
+
+@app.get("/api/ratelimit/status")
+async def ratelimit_status(email: str = Depends(get_current_user_email)):
+    """Get rate limiter statistics (admin view)."""
+    if not RATE_LIMITER_ENABLED:
+        return {"enabled": False}
+    return rate_limiter.get_status()
+
+
+# ============================================================================
+# BACKUP ENDPOINTS
+# ============================================================================
+
+@app.post("/api/backup/create")
+async def create_backup(email: str = Depends(get_current_user_email)):
+    """Create a manual backup."""
+    if not BACKUP_ENABLED:
+        raise HTTPException(status_code=503, detail="Backup system not available")
+    result = backup_manager.create_backup(label="manual")
+    return result
+
+
+@app.get("/api/backup/list")
+async def list_backups(email: str = Depends(get_current_user_email)):
+    """List all available backups."""
+    if not BACKUP_ENABLED:
+        raise HTTPException(status_code=503, detail="Backup system not available")
+    return {"backups": backup_manager.list_backups()}
+
+
+@app.get("/api/backup/status")
+async def backup_status(email: str = Depends(get_current_user_email)):
+    """Get backup system status."""
+    if not BACKUP_ENABLED:
+        return {"enabled": False}
+    return backup_manager.get_status()
+
+
+@app.post("/api/backup/restore/{filename}")
+async def restore_backup(filename: str, email: str = Depends(get_current_user_email)):
+    """Restore from a specific backup (admin only)."""
+    if not BACKUP_ENABLED:
+        raise HTTPException(status_code=503, detail="Backup system not available")
+    result = backup_manager.restore_backup(filename)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+# ============================================================================
+# PERFORMANCE ENDPOINTS
+# ============================================================================
+
+@app.get("/api/performance/stats")
+async def performance_stats(email: str = Depends(get_current_user_email)):
+    """Get comprehensive performance statistics."""
+    if not PERF_ENABLED:
+        return {"enabled": False}
+    return perf_tracker.get_stats()
+
+
+@app.get("/api/performance/slow")
+async def slow_endpoints(threshold: float = 100, email: str = Depends(get_current_user_email)):
+    """Get endpoints with response times above threshold."""
+    if not PERF_ENABLED:
+        return {"enabled": False, "slow_endpoints": []}
+    return {"threshold_ms": threshold, "slow_endpoints": perf_tracker.get_slow_endpoints(threshold)}
+
+
+@app.get("/api/performance/recent")
+async def recent_requests(email: str = Depends(get_current_user_email)):
+    """Get recent requests for real-time monitoring."""
+    if not PERF_ENABLED:
+        return {"enabled": False, "requests": []}
+    return {"requests": perf_tracker.get_recent_requests()}
 
 
 if __name__ == "__main__":

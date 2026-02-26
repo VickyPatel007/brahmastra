@@ -582,7 +582,7 @@
         </div>
 
         <!-- Navigation Links -->
-        <div class="grid grid-3" style="margin-bottom:24px;">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
             <a href="servers.html" class="card"
                 style="text-decoration:none;text-align:center;cursor:pointer;transition:all 0.3s;border:1px solid rgba(102,126,234,0.2);"
                 onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 32px rgba(102,126,234,0.2)';this.style.borderColor='rgba(102,126,234,0.5)'"
@@ -625,6 +625,18 @@
                 </svg>
                 <div style="color:#fff;font-weight:700;font-size:1rem;margin-bottom:4px">Audit Log</div>
                 <div style="color:rgba(255,255,255,0.45);font-size:0.8rem">Security events & activity history</div>
+            </a>
+            <a href="performance.html" class="card"
+                style="text-decoration:none;text-align:center;cursor:pointer;transition:all 0.3s;border:1px solid rgba(139,92,246,0.2);"
+                onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 32px rgba(139,92,246,0.2)';this.style.borderColor='rgba(139,92,246,0.5)'"
+                onmouseout="this.style.transform='';this.style.boxShadow='';this.style.borderColor='rgba(139,92,246,0.2)'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+                    stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    style="margin-bottom:10px">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
+                <div style="color:#fff;font-weight:700;font-size:1rem;margin-bottom:4px">Performance</div>
+                <div style="color:rgba(255,255,255,0.45);font-size:0.8rem">Latency, backups & rate limits</div>
             </a>
         </div>
 
