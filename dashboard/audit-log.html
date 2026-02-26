@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Log — Brahmastra</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding: 20px 24px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header-left h1 {
+            font-size: 1.8rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+
+        .header-left .subtitle {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.85rem;
+            margin-top: 4px;
+        }
+
+        .back-btn {
+            padding: 10px 22px;
+            background: rgba(102, 126, 234, 0.15);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            color: #667eea;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: rgba(102, 126, 234, 0.25);
+            transform: translateY(-1px);
+        }
+
+        /* Filters */
+        .filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 18px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .filter-btn.active {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: rgba(102, 126, 234, 0.5);
+            color: #667eea;
+        }
+
+        /* Table */
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 18px;
+            padding: 24px;
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .event-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .event-table th {
+            padding: 12px 16px;
+            text-align: left;
+            color: rgba(255, 255, 255, 0.45);
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .event-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            font-size: 0.88rem;
+        }
+
+        .event-table tr:hover td {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-critical {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .badge-high {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .badge-medium {
+            background: rgba(102, 126, 234, 0.15);
+            color: #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .badge-low {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .type-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .type-honeypot {
+            background: rgba(245, 158, 11, 0.1);
+            color: #f59e0b;
+        }
+
+        .type-ip_banned {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+
+        .type-kill_switch {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .type-login {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .event-count {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .filters {
+                flex-direction: column;
+            }
+
+            .event-table {
+                font-size: 0.8rem;
+            }
+
+            .event-table td,
+            .event-table th {
+                padding: 10px 8px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <h1><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="url(#agrd)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        style="vertical-align:middle;margin-right:8px">
+                        <defs>
+                            <linearGradient id="agrd" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#667eea" />
+                                <stop offset="100%" style="stop-color:#764ba2" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>Audit Log</h1>
+                <p class="subtitle">System events, security alerts & activity history</p>
+            </div>
+            <a class="back-btn" href="index.html">← Back to Dashboard</a>
+        </header>
+
+        <div class="filters">
+            <button class="filter-btn active" onclick="filterEvents('')">All Events</button>
+            <button class="filter-btn" onclick="filterEvents('honeypot_hit')"><svg xmlns="http://www.w3.org/2000/svg"
+                    width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>Honeypot</button>
+            <button class="filter-btn" onclick="filterEvents('ip_banned')"><svg xmlns="http://www.w3.org/2000/svg"
+                    width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                </svg>IP Banned</button>
+            <button class="filter-btn" onclick="filterEvents('kill_switch')"><svg xmlns="http://www.w3.org/2000/svg"
+                    width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
+                    </path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>Kill Switch</button>
+        </div>
+
+        <div id="eventCount" class="event-count"></div>
+
+        <div class="card">
+            <div id="eventsContainer">
+                <div class="empty-state">Loading events...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '';
+        let token = localStorage.getItem('jwt_token');
+        let refreshToken = localStorage.getItem('refresh_token');
+        let currentFilter = '';
+
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+
+        function getAuthHeaders() {
+            return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+        }
+
+        async function refreshAccessToken() {
+            if (!refreshToken) return false;
+            try {
+                const res = await fetch(`${API_URL}/api/auth/refresh`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh_token: refreshToken }),
+                });
+                if (!res.ok) return false;
+                const data = await res.json();
+                token = data.access_token;
+                refreshToken = data.refresh_token;
+                localStorage.setItem('jwt_token', token);
+                localStorage.setItem('refresh_token', refreshToken);
+                localStorage.setItem('token_expires_at', Date.now() + data.expires_in * 1000);
+                return true;
+            } catch (e) { return false; }
+        }
+
+        async function apiFetch(path, opts = {}) {
+            opts.headers = { ...getAuthHeaders(), ...(opts.headers || {}) };
+            let res = await fetch(`${API_URL}${path}`, opts);
+            if (res.status === 401) {
+                const ok = await refreshAccessToken();
+                if (!ok) { localStorage.clear(); window.location.href = 'login.html'; return null; }
+                opts.headers = { ...getAuthHeaders(), ...(opts.headers || {}) };
+                res = await fetch(`${API_URL}${path}`, opts);
+            }
+            return res;
+        }
+
+        function getSeverityBadge(severity) {
+            const cls = { critical: 'badge-critical', high: 'badge-high', medium: 'badge-medium', low: 'badge-low' };
+            return `<span class="badge ${cls[severity] || 'badge-low'}">${severity || 'info'}</span>`;
+        }
+
+        function getTypeBadge(type) {
+            const cls = { honeypot_hit: 'type-honeypot', ip_banned: 'type-ip_banned', kill_switch: 'type-kill_switch' };
+            const icons = { honeypot_hit: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>', ip_banned: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>', kill_switch: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg>' };
+            return `<span class="type-badge ${cls[type] || ''}">${icons[type] || ''} ${type}</span>`;
+        }
+
+        function filterEvents(type) {
+            currentFilter = type;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            fetchEvents();
+        }
+
+        async function fetchEvents() {
+            try {
+                let url = '/api/events?limit=200';
+                if (currentFilter) url += `&event_type=${currentFilter}`;
+                const res = await apiFetch(url);
+                if (!res || !res.ok) return;
+                const data = await res.json();
+                const container = document.getElementById('eventsContainer');
+                const countEl = document.getElementById('eventCount');
+
+                countEl.textContent = `Showing ${data.length} event${data.length !== 1 ? 's' : ''}`;
+
+                if (!data.length) {
+                    container.innerHTML = '<div class="empty-state">No events found</div>';
+                    return;
+                }
+
+                // Reverse to show newest first
+                const events = data.reverse();
+
+                container.innerHTML = `
+                    <table class="event-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th>Severity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${events.map(e => `
+                                <tr>
+                                    <td style="color:rgba(255,255,255,0.45);font-size:0.82rem;white-space:nowrap">
+                                        ${new Date(e.timestamp).toLocaleString()}
+                                    </td>
+                                    <td>${getTypeBadge(e.event_type)}</td>
+                                    <td style="max-width:400px">${e.description}</td>
+                                    <td>${getSeverityBadge(e.severity)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>`;
+            } catch (e) {
+                console.error('Events error:', e);
+            }
+        }
+
+        // Initial load + auto refresh
+        fetchEvents();
+        setInterval(fetchEvents, 15000);
+    </script>
+</body>
+
+</html>

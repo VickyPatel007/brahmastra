@@ -1,6 +1,26 @@
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
-pydantic==2.5.3
+pydantic[email]==2.5.3
 psutil==5.9.8
-python-multipart==0.0.6
-websockets==12.0
+
+# Database
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.25
+alembic==1.13.1
+python-multipart>=0.0.20
+
+# Auth
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# Rate limiting
+slowapi>=0.1.9
+
+# WebSockets
+websockets>=12.0
+
+# Env vars
+python-dotenv>=1.0.0
+
+# AWS (SES email + future use)
+boto3>=1.34.0
