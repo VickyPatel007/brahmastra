@@ -142,8 +142,10 @@ async def security_headers_middleware(request: Request, call_next):
         "connect-src 'self' wss:;"
     )
     # Remove server fingerprint
-    response.headers.pop("server", None)
-    response.headers.pop("x-powered-by", None)
+    if "server" in response.headers:
+        del response.headers["server"]
+    if "x-powered-by" in response.headers:
+        del response.headers["x-powered-by"]
     return response
 
 
