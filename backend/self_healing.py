@@ -20,6 +20,7 @@ import psutil
 import requests
 from collections import deque
 from datetime import datetime
+from typing import Tuple
 
 # ── Config ────────────────────────────────────────────────────────────────────
 API_URL           = os.getenv("API_URL", "http://localhost:8000")
@@ -294,8 +295,6 @@ class SelfHealingEngine:
             time.sleep(CHECK_INTERVAL)
 
 
-# Fix missing import
-from typing import Tuple
 
 if __name__ == "__main__":
     SelfHealingEngine().run()
