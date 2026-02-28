@@ -101,6 +101,30 @@ _cors_raw   = os.getenv(
 CORS_ORIGINS = [o.strip() for o in _cors_raw.split(",") if o.strip()]
 MAX_REQUEST_SIZE_BYTES = 1 * 1024 * 1024  # 1 MB hard limit
 
+# IPs that are never blocked (add your home IP here)
+WHITELISTED_IPS = set(
+    ip.strip() for ip in
+    os.getenv("WHITELISTED_IPS", "127.0.0.1,::1").split(",")
+    if ip.strip()
+)
+# Trusted reverse proxies — X-Forwarded-For is trusted FROM these IPs only
+TRUSTED_PROXIES = {"127.0.0.1", "::1"}
+
+
+def get_client_ip(request: Request) -> str:
+    """
+    Returns the real client IP.
+    If the direct connection comes from a trusted proxy (Nginx/localhost),
+    we read X-Forwarded-For to get the upstream client IP.
+    Otherwise we use the raw TCP connection IP.
+    """
+    direct_ip = request.client.host if request.client else "unknown"
+    xff = request.headers.get("X-Forwarded-For", "")
+    if xff and direct_ip in TRUSTED_PROXIES:
+        # Take the first (leftmost) IP, which is the actual client
+        return xff.split(",")[0].strip()
+    return direct_ip
+
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(
     title="Brahmastra API",
@@ -166,8 +190,16 @@ async def request_size_limit(request: Request, call_next):
 # ── Main Security Middleware ──────────────────────────────────────────────────
 @app.middleware("http")
 async def security_middleware(request: Request, call_next):
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = get_client_ip(request)
     path      = str(request.url.path)
+
+    # Never block whitelisted admin IPs
+    if client_ip in WHITELISTED_IPS:
+        _start = time.time()
+        response = await call_next(request)
+        if PERF_ENABLED:
+            perf_tracker.record(request.method, path, response.status_code, (time.time() - _start) * 1000)
+        return response
 
     # 1. IP Ban check
     if THREAT_ENGINE_ENABLED:
