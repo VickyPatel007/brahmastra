@@ -174,7 +174,7 @@ class SlidingWindowRateLimiter:
 
             # Auto attack mode based on block rate
             try:
-                cpu = psutil.cpu_percent(interval=0.2)
+                cpu = psutil.cpu_percent(interval=None)
                 if cpu > 90:
                     self.set_attack_mode(True)
                 elif cpu < 60:

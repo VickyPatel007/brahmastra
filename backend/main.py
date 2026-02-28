@@ -125,6 +125,66 @@ def get_client_ip(request: Request) -> str:
         return xff.split(",")[0].strip()
     return direct_ip
 
+
+# ── System Stats Cache (non-blocking) ────────────────────────────────────────
+import threading as _threading
+
+class _SystemStatsCache:
+    """
+    Refreshes CPU / memory / disk every REFRESH_INTERVAL seconds
+    in a background daemon thread.  All FastAPI endpoints read
+    from this cache instantly — zero blocking.
+    """
+    REFRESH_INTERVAL = 2  # seconds
+
+    def __init__(self):
+        # Prime the cache with a non-blocking sample
+        # (interval=None uses the last measurement or returns 0.0 the first time)
+        self._cpu  = psutil.cpu_percent(interval=None)
+        self._mem  = psutil.virtual_memory().percent
+        self._disk = psutil.disk_usage("/").percent
+        self._lock = _threading.Lock()
+        t = _threading.Thread(target=self._refresh_loop, daemon=True)
+        t.start()
+
+    def _refresh_loop(self):
+        # First real blocking call on startup (only once, in background)
+        psutil.cpu_percent(interval=1)
+        while True:
+            try:
+                cpu  = psutil.cpu_percent(interval=self.REFRESH_INTERVAL)
+                mem  = psutil.virtual_memory().percent
+                disk = psutil.disk_usage("/").percent
+                with self._lock:
+                    self._cpu  = cpu
+                    self._mem  = mem
+                    self._disk = disk
+            except Exception:
+                pass
+
+    @property
+    def cpu(self) -> float:
+        with self._lock:
+            return self._cpu
+
+    @property
+    def mem(self) -> float:
+        with self._lock:
+            return self._mem
+
+    @property
+    def disk(self) -> float:
+        with self._lock:
+            return self._disk
+
+    def snapshot(self) -> dict:
+        with self._lock:
+            return {"cpu": self._cpu, "mem": self._mem, "disk": self._disk}
+
+
+_stats = _SystemStatsCache()
+
+
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(
     title="Brahmastra API",
@@ -545,9 +605,9 @@ async def get_current_metrics(
     email: str = Depends(get_current_user_email),
     db: Session = Depends(get_db),
 ):
-    cpu    = psutil.cpu_percent(interval=1)
-    memory = psutil.virtual_memory().percent
-    disk   = psutil.disk_usage('/').percent
+    cpu    = _stats.cpu
+    memory = _stats.mem
+    disk   = _stats.disk
     status_str = "healthy" if cpu < 80 and memory < 80 else "warning"
     metrics = {"status": status_str, "cpu_percent": cpu, "memory_percent": memory,
                "disk_percent": disk, "timestamp": datetime.now().isoformat()}
@@ -595,8 +655,8 @@ async def get_threat_score(
     if THREAT_ENGINE_ENABLED:
         result = threat_engine.calculate_threat_score()
     else:
-        cpu    = psutil.cpu_percent(interval=1)
-        memory = psutil.virtual_memory().percent
+        cpu    = _stats.cpu
+        memory = _stats.mem
         score  = int((cpu + memory) / 2)
         level  = "low" if score < 50 else "medium" if score < 80 else "high"
         result = {"threat_score": score, "level": level, "timestamp": datetime.now().isoformat()}
@@ -919,9 +979,9 @@ async def websocket_endpoint(websocket: WebSocket):
     logger.info(f"🔌 WS connected: {email}")
     try:
         while True:
-            cpu    = psutil.cpu_percent(interval=1)
-            memory = psutil.virtual_memory().percent
-            disk   = psutil.disk_usage('/').percent
+            cpu    = _stats.cpu
+            memory = _stats.mem
+            disk   = _stats.disk
 
             threat_data = {}
             if THREAT_ENGINE_ENABLED:

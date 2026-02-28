@@ -302,7 +302,7 @@ class ThreatDetectionEngine:
         total_weight   = 0
 
         # CPU (weight 15)
-        cpu = psutil.cpu_percent(interval=0.3)
+        cpu = psutil.cpu_percent(interval=None) or psutil.cpu_percent(interval=0)
         factors["cpu"] = {"value": cpu, "score": min(cpu, 100), "weight": 15}
         weighted_score += min(cpu, 100) * 15;  total_weight += 15
 
