@@ -195,6 +195,15 @@ app = FastAPI(
     redoc_url=None if os.getenv("ENV") == "production" else "/redoc",
 )
 
+# ── Prometheus Metrics (/metrics endpoint for Grafana) ─────────────────────────
+try:
+    from prometheus_fastapi_instrumentator import Instrumentator as _Instrumentator
+    _Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+    logger.info("📊 Prometheus /metrics endpoint enabled")
+except ImportError:
+    logger.warning("⚠️  prometheus-fastapi-instrumentator not installed — /metrics disabled")
+
+
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -908,6 +917,111 @@ async def deactivate_kill_switch(
         rate_limiter.set_attack_mode(False)
     logger.info(f"✅ Kill switch deactivated by {email}")
     return {"status": "deactivated"}
+
+
+# ============================================================================
+# ADMIN PANEL ENDPOINTS (Admin only)
+# ============================================================================
+
+@app.get("/api/admin/banned-ips")
+async def admin_get_banned_ips(
+    email: str = Depends(get_current_user_email),
+    db: Session = Depends(get_db),
+):
+    """Return all currently banned IPs with time remaining."""
+    require_admin(email, db)
+    if THREAT_ENGINE_ENABLED:
+        return {"banned_ips": threat_engine.get_blocked_ips(), "count": len(threat_engine.get_blocked_ips())}
+    return {"banned_ips": [], "count": 0}
+
+
+@app.post("/api/admin/unban/{ip}")
+async def admin_unban_ip(
+    ip: str,
+    email: str = Depends(get_current_user_email),
+    db: Session = Depends(get_db),
+):
+    """Immediately unban an IP address."""
+    require_admin(email, db)
+    if THREAT_ENGINE_ENABLED:
+        success = threat_engine.unblock_ip(ip)
+        logger.info(f"🔓 Admin {email} unbanned IP: {ip}")
+        return {"status": "unbanned" if success else "not_found", "ip": ip}
+    return {"status": "threat_engine_disabled"}
+
+
+@app.get("/api/admin/users")
+async def admin_get_users(
+    email: str = Depends(get_current_user_email),
+    db: Session = Depends(get_db),
+):
+    """List all registered users."""
+    require_admin(email, db)
+    if not DB_ENABLED or not db:
+        return {"users": [], "note": "DB disabled"}
+    try:
+        users = db.query(User).all()
+        return {
+            "users": [
+                {
+                    "id": u.id,
+                    "email": u.email,
+                    "full_name": u.full_name,
+                    "is_admin": u.is_admin,
+                    "is_active": u.is_active,
+                    "is_verified": u.is_verified,
+                    "created_at": u.created_at.isoformat() if u.created_at else None,
+                }
+                for u in users
+            ],
+            "count": len(users),
+        }
+    except Exception as e:
+        logger.error(f"Admin users fetch failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/whitelist")
+async def admin_get_whitelist(
+    email: str = Depends(get_current_user_email),
+    db: Session = Depends(get_db),
+):
+    """Return the current runtime IP whitelist."""
+    require_admin(email, db)
+    return {"whitelist": sorted(WHITELISTED_IPS), "count": len(WHITELISTED_IPS)}
+
+
+@app.post("/api/admin/whitelist/add")
+async def admin_whitelist_add(
+    request: Request,
+    email: str = Depends(get_current_user_email),
+    db: Session = Depends(get_db),
+):
+    """Add an IP to the runtime whitelist (session only — not persisted to .env)."""
+    require_admin(email, db)
+    body = await request.json()
+    ip = body.get("ip", "").strip()
+    if not ip:
+        raise HTTPException(status_code=400, detail="ip field required")
+    WHITELISTED_IPS.add(ip)
+    # Also immediately unban if currently banned
+    if THREAT_ENGINE_ENABLED:
+        threat_engine.unblock_ip(ip)
+    logger.info(f"🟢 Admin {email} whitelisted IP: {ip}")
+    return {"status": "added", "ip": ip, "whitelist": sorted(WHITELISTED_IPS)}
+
+
+@app.delete("/api/admin/whitelist/remove/{ip}")
+async def admin_whitelist_remove(
+    ip: str,
+    email: str = Depends(get_current_user_email),
+    db: Session = Depends(get_db),
+):
+    """Remove an IP from the runtime whitelist."""
+    require_admin(email, db)
+    WHITELISTED_IPS.discard(ip)
+    logger.info(f"🔴 Admin {email} removed IP from whitelist: {ip}")
+    return {"status": "removed", "ip": ip, "whitelist": sorted(WHITELISTED_IPS)}
 
 
 # ============================================================================

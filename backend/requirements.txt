@@ -27,3 +27,6 @@ boto3>=1.34.0
 
 # Integrations
 requests>=2.31.0
+
+# Monitoring / Grafana
+prometheus-fastapi-instrumentator>=6.1.0

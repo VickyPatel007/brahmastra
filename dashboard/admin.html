@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Panel — Brahmastra</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
+        rel="stylesheet" />
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface2: #1c2333;
+            --border: #30363d;
+            --accent: #7c3aed;
+            --accent2: #a855f7;
+            --green: #22c55e;
+            --red: #ef4444;
+            --orange: #f59e0b;
+            --blue: #3b82f6;
+            --text: #e6edf3;
+            --muted: #8b949e;
+            --danger: #dc2626;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1a0533 0%, #0d1117 60%);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+        }
+
+        .logo-icon {
+            font-size: 1.5rem;
+        }
+
+        .logo-text {
+            font-size: 1.25rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent2), #c084fc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-badge {
+            background: var(--danger);
+            color: #fff;
+            font-size: .6rem;
+            font-weight: 700;
+            padding: .15rem .4rem;
+            border-radius: 4px;
+            letter-spacing: .5px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-email {
+            color: var(--muted);
+            font-size: .85rem;
+        }
+
+        .btn-logout {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            padding: .4rem .9rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: .8rem;
+            transition: all .2s;
+        }
+
+        .btn-logout:hover {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        /* Kill Switch Banner */
+        .kill-switch-bar {
+            background: linear-gradient(90deg, #1a0000, #2d0000);
+            border-bottom: 1px solid #7f1d1d;
+            padding: .75rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all .3s;
+        }
+
+        .kill-switch-bar.active {
+            background: linear-gradient(90deg, #0a2a0a, #052b05);
+            border-bottom-color: #166534;
+        }
+
+        .ks-label {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+        }
+
+        .ks-status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--red);
+            box-shadow: 0 0 8px var(--red);
+            animation: pulse 1.5s infinite;
+        }
+
+        .kill-switch-bar.active .ks-status-dot {
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green);
+        }
+
+        .ks-text {
+            font-weight: 600;
+            font-size: .9rem;
+        }
+
+        .ks-subtext {
+            color: var(--muted);
+            font-size: .75rem;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: .4
+            }
+        }
+
+        .btn-killswitch {
+            padding: .5rem 1.5rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: .85rem;
+            transition: all .2s;
+            letter-spacing: .3px;
+        }
+
+        .btn-killswitch.deactivate {
+            background: var(--red);
+            color: #fff;
+        }
+
+        .btn-killswitch.deactivate:hover {
+            background: #b91c1c;
+            box-shadow: 0 0 20px rgba(239, 68, 68, .4);
+        }
+
+        .btn-killswitch.activate {
+            background: var(--green);
+            color: #000;
+        }
+
+        .btn-killswitch.activate:hover {
+            background: #16a34a;
+            box-shadow: 0 0 20px rgba(34, 197, 94, .4);
+        }
+
+        /* Main Layout */
+        .main {
+            padding: 2rem;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media(max-width:900px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: border-color .2s;
+        }
+
+        .card:hover {
+            border-color: #444d56;
+        }
+
+        .card-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+        }
+
+        .card-count {
+            background: var(--accent);
+            color: #fff;
+            border-radius: 12px;
+            padding: .15rem .5rem;
+            font-size: .7rem;
+            font-weight: 700;
+        }
+
+        .card-count.red {
+            background: var(--red);
+        }
+
+        .card-count.green {
+            background: var(--green);
+            color: #000;
+        }
+
+        .card-body {
+            padding: 1.25rem 1.5rem;
+        }
+
+        /* Table */
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th {
+            padding: .6rem .8rem;
+            text-align: left;
+            color: var(--muted);
+            font-size: .72rem;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+        }
+
+        .table td {
+            padding: .75rem .8rem;
+            border-bottom: 1px solid #21262d;
+            font-size: .85rem;
+            vertical-align: middle;
+        }
+
+        .table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .table tr:hover td {
+            background: rgba(255, 255, 255, .02);
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .8rem;
+            color: #a78bfa;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            padding: .2rem .6rem;
+            border-radius: 20px;
+            font-size: .7rem;
+            font-weight: 600;
+        }
+
+        .badge.red {
+            background: rgba(239, 68, 68, .15);
+            color: var(--red);
+            border: 1px solid rgba(239, 68, 68, .3);
+        }
+
+        .badge.green {
+            background: rgba(34, 197, 94, .15);
+            color: var(--green);
+            border: 1px solid rgba(34, 197, 94, .3);
+        }
+
+        .badge.blue {
+            background: rgba(59, 130, 246, .15);
+            color: var(--blue);
+            border: 1px solid rgba(59, 130, 246, .3);
+        }
+
+        .badge.purple {
+            background: rgba(168, 85, 247, .15);
+            color: var(--accent2);
+            border: 1px solid rgba(168, 85, 247, .3);
+        }
+
+        .btn-sm {
+            padding: .3rem .7rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: .75rem;
+            font-weight: 600;
+            transition: all .2s;
+        }
+
+        .btn-unban {
+            background: rgba(34, 197, 94, .15);
+            color: var(--green);
+            border: 1px solid rgba(34, 197, 94, .3);
+        }
+
+        .btn-unban:hover {
+            background: var(--green);
+            color: #000;
+        }
+
+        .btn-remove {
+            background: rgba(239, 68, 68, .12);
+            color: var(--red);
+            border: 1px solid rgba(239, 68, 68, .25);
+        }
+
+        .btn-remove:hover {
+            background: var(--red);
+            color: #fff;
+        }
+
+        /* Whitelist form */
+        .whitelist-form {
+            display: flex;
+            gap: .75rem;
+            margin-bottom: 1rem;
+        }
+
+        .input-ip {
+            flex: 1;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: .55rem .9rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .85rem;
+            outline: none;
+            transition: border-color .2s;
+        }
+
+        .input-ip:focus {
+            border-color: var(--accent2);
+        }
+
+        .btn-add {
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: #fff;
+            border: none;
+            padding: .55rem 1.2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: .85rem;
+            transition: opacity .2s;
+        }
+
+        .btn-add:hover {
+            opacity: .85;
+        }
+
+        /* Empty state */
+        .empty {
+            text-align: center;
+            color: var(--muted);
+            padding: 2rem;
+            font-size: .9rem;
+        }
+
+        .empty-icon {
+            font-size: 2rem;
+            margin-bottom: .5rem;
+        }
+
+        /* Auto refresh indicator */
+        .refresh-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+
+        /* Scrollable table body */
+        .table-wrap {
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .table-wrap::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .table-wrap::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .table-wrap::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 2px;
+        }
+
+        /* Toast */
+        #toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: .9rem 1.4rem;
+            font-size: .85rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, .5);
+            z-index: 9999;
+            display: none;
+            max-width: 300px;
+        }
+
+        #toast.success {
+            border-color: var(--green);
+            color: var(--green);
+        }
+
+        #toast.error {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        /* Back link */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            color: var(--muted);
+            text-decoration: none;
+            font-size: .85rem;
+            margin-bottom: 1.5rem;
+            transition: color .2s;
+        }
+
+        .back-link:hover {
+            color: var(--text);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <div class="logo">
+            <span class="logo-icon">⚡</span>
+            <span class="logo-text">BRAHMASTRA</span>
+            <span class="logo-badge">ADMIN</span>
+        </div>
+        <div class="header-right">
+            <span class="user-email" id="userEmail">Loading...</span>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <!-- Kill Switch Bar -->
+    <div class="kill-switch-bar" id="killSwitchBar">
+        <div class="ks-label">
+            <div class="ks-status-dot" id="ksDot"></div>
+            <div>
+                <div class="ks-text" id="ksText">Kill Switch: INACTIVE</div>
+                <div class="ks-subtext">All traffic is flowing normally</div>
+            </div>
+        </div>
+        <button class="btn-killswitch deactivate" id="ksBtn" onclick="toggleKillSwitch()">⚡ Activate Kill
+            Switch</button>
+    </div>
+
+    <div class="main">
+        <a href="index.html" class="back-link">← Back to Dashboard</a>
+
+        <div class="grid-2">
+            <!-- Banned IPs -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🚫 Banned IPs <span class="card-count red" id="banCount">0</span></div>
+                    <span class="refresh-dot" title="Auto-refreshing every 5s"></span>
+                </div>
+                <div class="card-body">
+                    <div class="table-wrap">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>IP Address</th>
+                                    <th>Offenses</th>
+                                    <th>Expires In</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bannedTable">
+                                <tr>
+                                    <td colspan="4">
+                                        <div class="empty">
+                                            <div class="empty-icon">✅</div>No banned IPs
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Whitelist Manager -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🛡️ IP Whitelist <span class="card-count green" id="whitelistCount">0</span>
+                    </div>
+                    <span class="refresh-dot"></span>
+                </div>
+                <div class="card-body">
+                    <div class="whitelist-form">
+                        <input class="input-ip" id="whitelistInput" type="text"
+                            placeholder="Enter IP address (e.g. 1.2.3.4)" />
+                        <button class="btn-add" onclick="addToWhitelist()">+ Add IP</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>IP Address</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="whitelistTable">
+                                <tr>
+                                    <td colspan="2">
+                                        <div class="empty">Loading...</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users Table -->
+        <div class="card" style="margin-bottom:1.5rem">
+            <div class="card-header">
+                <div class="card-title">👥 Registered Users <span class="card-count" id="userCount">0</span></div>
+                <span class="refresh-dot"></span>
+            </div>
+            <div class="card-body">
+                <div class="table-wrap" style="max-height:400px">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Email</th>
+                                <th>Full Name</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Joined</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTable">
+                            <tr>
+                                <td colspan="6">
+                                    <div class="empty">Loading...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+        const API = 'http://13.202.18.214:8080';
+        let token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        let killSwitchActive = false;
+
+        if (!token) { window.location.href = 'login.html'; }
+
+        function headers() { return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }; }
+
+        function showToast(msg, type = 'success') {
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.className = type; t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 3000);
+        }
+
+        function logout() {
+            localStorage.removeItem('token'); sessionStorage.removeItem('token');
+            window.location.href = 'login.html';
+        }
+
+        // Decode JWT to get email + check is_admin
+        function decodeToken(t) {
+            try { return JSON.parse(atob(t.split('.')[1])); } catch { return null; }
+        }
+
+        async function loadBannedIPs() {
+            try {
+                const r = await fetch(`${API}/api/admin/banned-ips`, { headers: headers() });
+                if (r.status === 403) { window.location.href = 'index.html'; return; }
+                const data = await r.json();
+                document.getElementById('banCount').textContent = data.count || 0;
+                const tbody = document.getElementById('bannedTable');
+                if (!data.banned_ips || data.banned_ips.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4"><div class="empty"><div class="empty-icon">✅</div>No banned IPs — all clear!</div></td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.banned_ips.map(b => `
+        <tr>
+          <td><span class="mono">${b.ip}</span></td>
+          <td><span class="badge red">×${b.offense_count || 1}</span></td>
+          <td>${formatTime(b.ban_expires_in_seconds)}</td>
+          <td><button class="btn-sm btn-unban" onclick="unbanIP('${b.ip}')">🔓 Unban</button></td>
+        </tr>`).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        function formatTime(secs) {
+            if (secs < 60) return `${secs}s`;
+            if (secs < 3600) return `${Math.floor(secs / 60)}m`;
+            return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`;
+        }
+
+        async function unbanIP(ip) {
+            try {
+                const r = await fetch(`${API}/api/admin/unban/${encodeURIComponent(ip)}`, { method: 'POST', headers: headers() });
+                const d = await r.json();
+                showToast(`✅ ${ip} unbanned!`, 'success');
+                loadBannedIPs();
+            } catch (e) { showToast('❌ Unban failed', 'error'); }
+        }
+
+        async function loadWhitelist() {
+            try {
+                const r = await fetch(`${API}/api/admin/whitelist`, { headers: headers() });
+                const data = await r.json();
+                document.getElementById('whitelistCount').textContent = data.count || 0;
+                const tbody = document.getElementById('whitelistTable');
+                if (!data.whitelist || data.whitelist.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="2"><div class="empty">No whitelisted IPs</div></td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.whitelist.map(ip => `
+        <tr>
+          <td><span class="mono">${ip}</span></td>
+          <td><button class="btn-sm btn-remove" onclick="removeFromWhitelist('${ip}')">✕ Remove</button></td>
+        </tr>`).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        async function addToWhitelist() {
+            const ip = document.getElementById('whitelistInput').value.trim();
+            if (!ip) { showToast('Enter an IP address', 'error'); return; }
+            try {
+                const r = await fetch(`${API}/api/admin/whitelist/add`, { method: 'POST', headers: headers(), body: JSON.stringify({ ip }) });
+                const d = await r.json();
+                showToast(`✅ ${ip} added to whitelist!`, 'success');
+                document.getElementById('whitelistInput').value = '';
+                loadWhitelist();
+            } catch (e) { showToast('❌ Failed to add', 'error'); }
+        }
+
+        async function removeFromWhitelist(ip) {
+            try {
+                await fetch(`${API}/api/admin/whitelist/remove/${encodeURIComponent(ip)}`, { method: 'DELETE', headers: headers() });
+                showToast(`🔴 ${ip} removed from whitelist`, 'success');
+                loadWhitelist();
+            } catch (e) { showToast('❌ Failed to remove', 'error'); }
+        }
+
+        async function loadUsers() {
+            try {
+                const r = await fetch(`${API}/api/admin/users`, { headers: headers() });
+                const data = await r.json();
+                document.getElementById('userCount').textContent = data.count || 0;
+                const tbody = document.getElementById('usersTable');
+                if (!data.users || data.users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6"><div class="empty">No users found</div></td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.users.map(u => `
+        <tr>
+          <td><span class="mono">${u.id}</span></td>
+          <td>${u.email}</td>
+          <td>${u.full_name || '—'}</td>
+          <td>${u.is_admin ? '<span class="badge purple">👑 Admin</span>' : '<span class="badge blue">User</span>'}</td>
+          <td>${u.is_active ? '<span class="badge green">Active</span>' : '<span class="badge red">Inactive</span>'}</td>
+          <td style="color:var(--muted);font-size:.8rem">${u.created_at ? u.created_at.split('T')[0] : '—'}</td>
+        </tr>`).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        async function toggleKillSwitch() {
+            const endpoint = killSwitchActive ? '/api/kill-switch/deactivate' : '/api/kill-switch/activate';
+            const body = killSwitchActive ? {} : { reason: 'Admin manual override', triggered_by: 'admin_panel' };
+            try {
+                await fetch(`${API}${endpoint}`, { method: 'POST', headers: headers(), body: JSON.stringify(body) });
+                killSwitchActive = !killSwitchActive;
+                updateKillSwitchUI();
+                showToast(killSwitchActive ? '🔴 Kill switch ACTIVATED!' : '✅ Kill switch deactivated', killSwitchActive ? 'error' : 'success');
+            } catch (e) { showToast('❌ Kill switch failed', 'error'); }
+        }
+
+        function updateKillSwitchUI() {
+            const bar = document.getElementById('killSwitchBar');
+            const btn = document.getElementById('ksBtn');
+            const text = document.getElementById('ksText');
+            if (killSwitchActive) {
+                bar.classList.add('active');
+                btn.className = 'btn-killswitch activate';
+                btn.textContent = '✅ Deactivate Kill Switch';
+                text.textContent = 'Kill Switch: ACTIVE — Emergency mode!';
+            } else {
+                bar.classList.remove('active');
+                btn.className = 'btn-killswitch deactivate';
+                btn.textContent = '⚡ Activate Kill Switch';
+                text.textContent = 'Kill Switch: INACTIVE';
+            }
+        }
+
+        function refreshAll() { loadBannedIPs(); loadWhitelist(); loadUsers(); }
+
+        // Init
+        const payload = decodeToken(token);
+        if (payload) document.getElementById('userEmail').textContent = payload.sub || '';
+
+        refreshAll();
+        setInterval(refreshAll, 5000);
+    </script>
+</body>
+
+</html>

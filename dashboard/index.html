@@ -636,7 +636,19 @@
                     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                 </svg>
                 <div style="color:#fff;font-weight:700;font-size:1rem;margin-bottom:4px">Performance</div>
-                <div style="color:rgba(255,255,255,0.45);font-size:0.8rem">Latency, backups & rate limits</div>
+                <div style="color:rgba(255,255,255,0.45);font-size:0.8rem">Latency, backups &amp; rate limits</div>
+            </a>
+            <a href="admin.html" id="adminNavCard" class="card"
+                style="text-decoration:none;text-align:center;cursor:pointer;transition:all 0.3s;border:1px solid rgba(220,38,38,0.2);display:none;"
+                onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 32px rgba(220,38,38,0.25)';this.style.borderColor='rgba(220,38,38,0.5)'"
+                onmouseout="this.style.transform='';this.style.boxShadow='';this.style.borderColor='rgba(220,38,38,0.2)'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+                    stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    style="margin-bottom:10px">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                <div style="color:#ef4444;font-weight:700;font-size:1rem;margin-bottom:4px">Admin Panel</div>
+                <div style="color:rgba(255,255,255,0.45);font-size:0.8rem">Bans, users &amp; kill switch</div>
             </a>
         </div>
 
@@ -665,6 +677,15 @@
         }
 
         document.getElementById('userEmail').textContent = localStorage.getItem('user_email') || 'User';
+
+        // Show Admin Panel card only for admin users
+        try {
+            const _p = JSON.parse(atob(token.split('.')[1]));
+            if (_p && _p.is_admin) {
+                const adminCard = document.getElementById('adminNavCard');
+                if (adminCard) adminCard.style.display = '';
+            }
+        } catch (_) { }
 
         function getAuthHeaders() {
             return {
