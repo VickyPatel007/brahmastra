@@ -24,7 +24,7 @@ from typing import List, Dict, Optional
 import psutil
 from fastapi import FastAPI, WebSocket, Depends, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -270,27 +270,16 @@ async def security_middleware(request: Request, call_next):
             perf_tracker.record(request.method, path, response.status_code, (time.time() - _start) * 1000)
         return response
 
-    # 1. IP Ban check
+    # 1. IP Ban check — FAST REJECT (minimal CPU, no JSON, no logging)
     if THREAT_ENGINE_ENABLED:
         is_banned, seconds_left = threat_engine.is_ip_banned(client_ip)
         if is_banned:
-            logger.warning(f"🚫 Blocked banned IP: {client_ip} ({seconds_left}s left)")
-            return JSONResponse(
-                status_code=403,
-                content={
-                    "detail": f"Your IP is blocked. Try again in {seconds_left // 60 + 1} minutes.",
-                    "ban_expires_in_seconds": seconds_left,
-                },
-            )
+            return Response(content="blocked", status_code=403, media_type="text/plain")
 
-    # 2. DDoS burst check
+    # 2. DDoS burst check — FAST REJECT
     if THREAT_ENGINE_ENABLED:
         if threat_engine.check_ddos(client_ip):
-            return JSONResponse(
-                status_code=429,
-                content={"detail": "Too many requests — DDoS protection activated."},
-                headers={"Retry-After": "60"},
-            )
+            return Response(content="rate limited", status_code=429, media_type="text/plain")
 
     # 3. Rate limit check
     if RATE_LIMITER_ENABLED:
@@ -1228,4 +1217,11 @@ async def recent_requests(email: str = Depends(get_current_user_email)):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        workers=2,           # 2 workers: one handles attack rejections, other serves dashboard
+        limit_concurrency=50, # Cap concurrent connections to prevent event loop starvation
+        timeout_keep_alive=5, # Drop idle attack connections faster
+    )
