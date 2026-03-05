@@ -884,7 +884,7 @@
 
         async function fetchStats() {
             try {
-                const res = await fetch(`${API_URL}/api/stats`); // public endpoint
+                const res = await fetch(`${API_URL}/api/stats`, { headers: { 'Authorization': `Bearer ${token}` } });
                 if (!res.ok) return;
                 const data = await res.json();
                 document.getElementById('metricsCount').textContent = (data.metrics_count ?? '--').toLocaleString();
