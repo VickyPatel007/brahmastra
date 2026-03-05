@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Defense — Brahmastra</title>
+    <meta name="description"
+        content="Brahmastra AI-Powered Defense System: Traffic Classification, Honeypot Trapping, Emergency Response">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --purple1: #667eea;
+            --purple2: #764ba2;
+            --green: #10b981;
+            --yellow: #f59e0b;
+            --red: #ef4444;
+            --cyan: #06b6d4;
+            --orange: #f97316;
+            --glass: rgba(255, 255, 255, 0.05);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* ── Header ── */
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 24px;
+            background: var(--glass);
+            border-radius: 20px;
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            position: relative;
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            font-weight: 800;
+        }
+
+        header h1 span {
+            background: linear-gradient(135deg, #ef4444, #f97316);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header p {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.9rem;
+            margin-top: 4px;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 24px;
+            padding: 8px 18px;
+            background: rgba(102, 126, 234, 0.15);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            color: var(--purple1);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+        }
+
+        .back-btn:hover {
+            background: rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* ── Cards ── */
+        .card {
+            background: var(--glass);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* ── Grid ── */
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        /* ── Stat Cards ── */
+        .stat-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--glass);
+            border-radius: 14px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(12px);
+        }
+
+        .stat-card .number {
+            font-size: 2rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .stat-card .label {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card .sub {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 4px;
+        }
+
+        /* ── Threat Level ── */
+        .threat-level {
+            padding: 16px 28px;
+            border-radius: 14px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+            margin-bottom: 24px;
+            animation: pulse 2s infinite;
+        }
+
+        .threat-normal {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            color: var(--green);
+        }
+
+        .threat-suspicious {
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            color: var(--yellow);
+        }
+
+        .threat-attack {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: var(--red);
+        }
+
+        .threat-critical {
+            background: rgba(239, 68, 68, 0.3);
+            border: 2px solid rgba(239, 68, 68, 0.8);
+            color: #ff4444;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.85;
+            }
+        }
+
+        /* ── Progress Bar ── */
+        .progress-wrap {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            height: 10px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            border-radius: 8px;
+            transition: width 0.5s ease;
+        }
+
+        /* ── Table ── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 10px 12px;
+            font-size: 0.85rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        /* ── Tags ── */
+        .tag {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .tag-green {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--green);
+        }
+
+        .tag-yellow {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--yellow);
+        }
+
+        .tag-red {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--red);
+        }
+
+        .tag-cyan {
+            background: rgba(6, 182, 212, 0.15);
+            color: var(--cyan);
+        }
+
+        .tag-purple {
+            background: rgba(139, 92, 246, 0.15);
+            color: #8b5cf6;
+        }
+
+        /* ── Emergency Button ── */
+        .emergency-btn {
+            padding: 14px 36px;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            border: 2px solid #ef4444;
+            border-radius: 14px;
+            color: #fff;
+            font-weight: 800;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .emergency-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 32px rgba(239, 68, 68, 0.4);
+        }
+
+        .emergency-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ── Honeypot Fake Preview ── */
+        .fake-preview {
+            background: #1e1e2e;
+            border-radius: 10px;
+            padding: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            color: #a6e3a1;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid rgba(166, 227, 161, 0.2);
+        }
+
+        /* Loading */
+        .loading {
+            color: rgba(255, 255, 255, 0.4);
+            text-align: center;
+            padding: 40px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="back-btn">← Back to Dashboard</a>
+            <h1>🛡️ <span>AI Defense</span> System</h1>
+            <p>Real-time traffic classification, honeypot trapping & emergency response</p>
+        </header>
+
+        <!-- ── Threat Level Banner ── -->
+        <div id="threatBanner" class="threat-level threat-normal">
+            🟢 THREAT LEVEL: NORMAL — All systems secure
+        </div>
+
+        <!-- ── Top Stats ── -->
+        <div class="stat-row">
+            <div class="stat-card">
+                <div class="number" style="color:var(--cyan)" id="totalClassified">--</div>
+                <div class="label">Requests Analyzed</div>
+                <div class="sub" id="classifyRate">by AI classifier</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" style="color:var(--red)" id="attacksDetected">--</div>
+                <div class="label">Attacks Detected</div>
+                <div class="sub" id="detectionRate">-- detection rate</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" style="color:var(--orange)" id="honeypotTrapped">--</div>
+                <div class="label">Attackers Trapped</div>
+                <div class="sub" id="evidenceCount">-- evidence files</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" style="color:var(--green)" id="emergencyStatus">READY</div>
+                <div class="label">Emergency System</div>
+                <div class="sub" id="emergencyBackups">-- backups</div>
+            </div>
+        </div>
+
+        <!-- ── Main Grid ── -->
+        <div class="grid-2">
+            <!-- AI Classifier -->
+            <div class="card">
+                <div class="card-title">🧠 AI Traffic Classifier</div>
+                <div id="aiStats">
+                    <div style="margin-bottom:16px">
+                        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:4px">
+                            <span>Detection Accuracy</span>
+                            <span id="aiAccuracy" style="font-weight:700;color:var(--green)">--%</span>
+                        </div>
+                        <div class="progress-wrap">
+                            <div id="aiAccuracyBar" class="progress-bar"
+                                style="width:0%;background:linear-gradient(90deg,var(--green),var(--cyan))"></div>
+                        </div>
+                    </div>
+                    <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin-bottom:12px">Attack Types Detected
+                        (Last 5 min)</div>
+                    <div id="attackTypes" style="display:flex;flex-wrap:wrap;gap:6px">
+                        <span class="tag tag-cyan">Loading...</span>
+                    </div>
+                    <div style="margin-top:16px">
+                        <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin-bottom:8px">Model Weights</div>
+                        <div id="modelWeights" style="font-size:0.75rem;color:rgba(255,255,255,0.3)">Loading...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Honeypot -->
+            <div class="card">
+                <div class="card-title">🍯 Honeypot Engine</div>
+                <div id="honeypotStats">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+                        <div
+                            style="text-align:center;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px">
+                            <div style="font-size:1.5rem;font-weight:800;color:var(--orange)" id="activeSessions">--
+                            </div>
+                            <div style="font-size:0.7rem;color:rgba(255,255,255,0.4)">Active Sessions</div>
+                        </div>
+                        <div
+                            style="text-align:center;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px">
+                            <div style="font-size:1.5rem;font-weight:800;color:var(--red)" id="severityCritical">--
+                            </div>
+                            <div style="font-size:0.7rem;color:rgba(255,255,255,0.4)">Critical Severity</div>
+                        </div>
+                    </div>
+                    <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin-bottom:8px">Tools Detected</div>
+                    <div id="toolsDetected" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">
+                        <span class="tag tag-purple">Waiting...</span>
+                    </div>
+                    <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin-bottom:8px">Fake Environments Active
+                    </div>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px">
+                        <span class="tag tag-red">WordPress</span>
+                        <span class="tag tag-cyan">phpMyAdmin</span>
+                        <span class="tag tag-yellow">.env</span>
+                        <span class="tag tag-green">Admin Panel</span>
+                        <span class="tag tag-purple">DB Dump</span>
+                        <span class="tag tag-red">User API</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Threatened IPs ── -->
+        <div class="card" style="margin-bottom:24px">
+            <div class="card-title">⚠️ Threatened IPs (AI Detected)</div>
+            <div style="overflow-x:auto">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>IP Address</th>
+                            <th>Threat Score</th>
+                            <th>Classification</th>
+                            <th>Requests</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="threatenedIPs">
+                        <tr>
+                            <td colspan="5" class="loading">Analyzing traffic...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ── Active Honeypot Sessions ── -->
+        <div class="card" style="margin-bottom:24px">
+            <div class="card-title">🍯 Active Attacker Sessions</div>
+            <div style="overflow-x:auto">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>IP</th>
+                            <th>Requests</th>
+                            <th>Severity</th>
+                            <th>Tools</th>
+                            <th>First Seen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attackerSessions">
+                        <tr>
+                            <td colspan="5" class="loading">No attackers trapped yet...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ── Emergency Response ── -->
+        <div class="card" style="border: 1px solid rgba(239,68,68,0.3);">
+            <div class="card-title" style="color:var(--red)">🚨 Emergency Response Chain</div>
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px;text-align:center">
+                <div
+                    style="padding:12px;background:rgba(16,185,129,0.1);border-radius:10px;border:1px solid rgba(16,185,129,0.2)">
+                    <div style="font-size:1.2rem;margin-bottom:4px">📦</div>
+                    <div style="font-size:0.7rem;font-weight:600">Backup</div>
+                    <div style="font-size:0.6rem;color:rgba(255,255,255,0.4)">Step 1</div>
+                </div>
+                <div
+                    style="padding:12px;background:rgba(6,182,212,0.1);border-radius:10px;border:1px solid rgba(6,182,212,0.2)">
+                    <div style="font-size:1.2rem;margin-bottom:4px">📁</div>
+                    <div style="font-size:0.7rem;font-weight:600">Evidence</div>
+                    <div style="font-size:0.6rem;color:rgba(255,255,255,0.4)">Step 2</div>
+                </div>
+                <div
+                    style="padding:12px;background:rgba(139,92,246,0.1);border-radius:10px;border:1px solid rgba(139,92,246,0.2)">
+                    <div style="font-size:1.2rem;margin-bottom:4px">💾</div>
+                    <div style="font-size:0.7rem;font-weight:600">Sys Backup</div>
+                    <div style="font-size:0.6rem;color:rgba(255,255,255,0.4)">Step 3</div>
+                </div>
+                <div
+                    style="padding:12px;background:rgba(245,158,11,0.1);border-radius:10px;border:1px solid rgba(245,158,11,0.2)">
+                    <div style="font-size:1.2rem;margin-bottom:4px">📢</div>
+                    <div style="font-size:0.7rem;font-weight:600">Alert</div>
+                    <div style="font-size:0.6rem;color:rgba(255,255,255,0.4)">Step 4</div>
+                </div>
+                <div
+                    style="padding:12px;background:rgba(239,68,68,0.1);border-radius:10px;border:1px solid rgba(239,68,68,0.2)">
+                    <div style="font-size:1.2rem;margin-bottom:4px">💀</div>
+                    <div style="font-size:0.7rem;font-weight:600">Kill Server</div>
+                    <div style="font-size:0.6rem;color:rgba(255,255,255,0.4)">Step 5</div>
+                </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                    <div style="font-size:0.85rem;">Emergency backups: <strong id="emBackupCount">--</strong></div>
+                    <div style="font-size:0.75rem;color:rgba(255,255,255,0.4)" id="emCallbacks">Callbacks: Loading...
+                    </div>
+                </div>
+                <button class="emergency-btn" id="emergencyBtn" onclick="triggerEmergency()">
+                    ⚠️ TRIGGER EMERGENCY
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BASE = window.location.origin;
+        const token = localStorage.getItem('token');
+
+        if (!token) { window.location.href = 'login.html'; }
+
+        const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+        async function fetchAPI(endpoint) {
+            try {
+                const res = await fetch(`${BASE}${endpoint}`, { headers });
+                if (res.status === 401) { window.location.href = 'login.html'; return null; }
+                if (!res.ok) return null;
+                return await res.json();
+            } catch (e) { return null; }
+        }
+
+        function getTagClass(label) {
+            const map = { normal: 'tag-green', suspicious: 'tag-yellow', attack: 'tag-red', critical: 'tag-red' };
+            return map[label] || 'tag-cyan';
+        }
+
+        function getSeverityTag(severity) {
+            const map = { low: 'tag-green', medium: 'tag-yellow', high: 'tag-red', critical: 'tag-red' };
+            return `<span class="tag ${map[severity] || 'tag-cyan'}">${severity}</span>`;
+        }
+
+        function timeAgo(isoStr) {
+            try {
+                const diff = (Date.now() - new Date(isoStr).getTime()) / 1000;
+                if (diff < 60) return `${Math.floor(diff)}s ago`;
+                if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+                return `${Math.floor(diff / 3600)}h ago`;
+            } catch { return isoStr; }
+        }
+
+        // ── Load AI Stats ──
+        async function loadAIStats() {
+            const data = await fetchAPI('/api/ai/stats');
+            if (!data || data.enabled === false) return;
+
+            document.getElementById('totalClassified').textContent = (data.total_classified || 0).toLocaleString();
+            document.getElementById('attacksDetected').textContent = (data.total_attacks_detected || 0).toLocaleString();
+            document.getElementById('detectionRate').textContent = `${data.detection_rate || 0}% detection rate`;
+
+            // Accuracy bar
+            const rate = data.detection_rate || 0;
+            document.getElementById('aiAccuracy').textContent = `${rate}%`;
+            document.getElementById('aiAccuracyBar').style.width = `${Math.min(100, rate)}%`;
+
+            // Attack types
+            const types = data.recent_5min?.attack_types || {};
+            const typesEl = document.getElementById('attackTypes');
+            if (Object.keys(types).length > 0) {
+                typesEl.innerHTML = Object.entries(types)
+                    .map(([type, count]) => `<span class="tag tag-red">${type}: ${count}</span>`)
+                    .join('');
+            } else {
+                typesEl.innerHTML = '<span class="tag tag-green">No attacks in last 5 min</span>';
+            }
+
+            // Threatened IPs
+            const tbody = document.getElementById('threatenedIPs');
+            if (data.threatened_ips && data.threatened_ips.length > 0) {
+                tbody.innerHTML = data.threatened_ips.map(ip => `
+                    <tr>
+                        <td style="font-family:monospace;color:var(--cyan)">${ip.ip}</td>
+                        <td><strong style="color:${ip.score > 70 ? 'var(--red)' : 'var(--yellow)'}">${ip.score}</strong>/100</td>
+                        <td><span class="tag ${getTagClass(ip.label)}">${ip.label.toUpperCase()}</span></td>
+                        <td>${ip.requests}</td>
+                        <td>${ip.score >= 90 ? '🚨 CRITICAL' : ip.score >= 70 ? '🍯 Honeypot' : '👀 Monitoring'}</td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--green)">✅ No threats detected — All traffic is clean</td></tr>';
+            }
+
+            // Model weights
+            if (data.model_weights) {
+                document.getElementById('modelWeights').innerHTML = Object.entries(data.model_weights)
+                    .map(([k, v]) => `<span style="margin-right:12px">${k}: <strong>${v}%</strong></span>`)
+                    .join('');
+            }
+
+            // Threat banner
+            updateThreatBanner(data);
+        }
+
+        function updateThreatBanner(aiData) {
+            const banner = document.getElementById('threatBanner');
+            const recentAttacks = aiData.recent_5min?.attacks || 0;
+
+            if (recentAttacks > 10) {
+                banner.className = 'threat-level threat-critical';
+                banner.innerHTML = '🔴 THREAT LEVEL: CRITICAL — Active attack detected! Emergency response standing by';
+            } else if (recentAttacks > 3) {
+                banner.className = 'threat-level threat-attack';
+                banner.innerHTML = '🟠 THREAT LEVEL: HIGH — Multiple attack attempts detected';
+            } else if (recentAttacks > 0) {
+                banner.className = 'threat-level threat-suspicious';
+                banner.innerHTML = '🟡 THREAT LEVEL: ELEVATED — Suspicious activity detected';
+            } else {
+                banner.className = 'threat-level threat-normal';
+                banner.innerHTML = '🟢 THREAT LEVEL: NORMAL — All systems secure';
+            }
+        }
+
+        // ── Load Honeypot Stats ──
+        async function loadHoneypotStats() {
+            const data = await fetchAPI('/api/honeypot/engine/stats');
+            if (!data || data.enabled === false) return;
+
+            document.getElementById('honeypotTrapped').textContent = data.total_trapped || 0;
+            document.getElementById('evidenceCount').textContent = `${data.evidence_collected || 0} evidence files`;
+            document.getElementById('activeSessions').textContent = data.active_sessions || 0;
+
+            const severities = data.severity_breakdown || {};
+            document.getElementById('severityCritical').textContent = (severities.critical || 0) + (severities.high || 0);
+
+            // Tools
+            const toolsEl = document.getElementById('toolsDetected');
+            if (data.tools_detected && data.tools_detected.length > 0) {
+                toolsEl.innerHTML = data.tools_detected
+                    .map(t => `<span class="tag tag-red">${t}</span>`).join('');
+            } else {
+                toolsEl.innerHTML = '<span class="tag tag-green">No attack tools detected</span>';
+            }
+
+            // Attacker sessions table
+            const tbody = document.getElementById('attackerSessions');
+            if (data.active_attackers && data.active_attackers.length > 0) {
+                tbody.innerHTML = data.active_attackers.map(a => `
+                    <tr>
+                        <td style="font-family:monospace;color:var(--orange)">${a.ip}</td>
+                        <td><strong>${a.requests}</strong></td>
+                        <td>${getSeverityTag(a.severity)}</td>
+                        <td>${a.tools.length > 0 ? a.tools.map(t => `<span class="tag tag-purple">${t}</span>`).join(' ') : '--'}</td>
+                        <td style="color:rgba(255,255,255,0.5)">${timeAgo(a.first_seen)}</td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--green)">🍯 Honeypot ready — No attackers trapped yet</td></tr>';
+            }
+        }
+
+        // ── Load Emergency Status ──
+        async function loadEmergencyStatus() {
+            const data = await fetchAPI('/api/emergency/status');
+            if (!data || data.enabled === false) {
+                document.getElementById('emergencyStatus').textContent = 'OFF';
+                return;
+            }
+
+            document.getElementById('emergencyStatus').textContent = data.active ? '⚠️ ACTIVE' : 'READY';
+            document.getElementById('emergencyStatus').style.color = data.active ? 'var(--red)' : 'var(--green)';
+            document.getElementById('emergencyBackups').textContent = `${data.emergency_backups || 0} backups`;
+            document.getElementById('emBackupCount').textContent = data.emergency_backups || 0;
+
+            const cb = data.callbacks_registered || {};
+            document.getElementById('emCallbacks').textContent =
+                `Kill: ${cb.kill_switch ? '✅' : '❌'} | Honeypot: ${cb.honeypot ? '✅' : '❌'} | Backup: ${cb.backup ? '✅' : '❌'}`;
+        }
+
+        // ── Trigger Emergency ──
+        async function triggerEmergency() {
+            if (!confirm('⚠️ WARNING: This will:\n\n1. Create emergency backup\n2. Save all evidence\n3. Alert admin\n4. KILL the server\n\nAre you sure?')) return;
+            if (!confirm('🚨 FINAL WARNING: Server will go DOWN!\n\nType OK to proceed.')) return;
+
+            document.getElementById('emergencyBtn').disabled = true;
+            document.getElementById('emergencyBtn').textContent = '⏳ EXECUTING...';
+
+            try {
+                const res = await fetch(`${BASE}/api/emergency/trigger`, { method: 'POST', headers });
+                const data = await res.json();
+                alert('🚨 Emergency response executed!\n\n' + JSON.stringify(data.steps, null, 2));
+            } catch (e) {
+                alert('Emergency trigger sent — server may be shutting down.');
+            }
+        }
+
+        // ── Auto Refresh ──
+        async function refresh() {
+            await Promise.all([loadAIStats(), loadHoneypotStats(), loadEmergencyStatus()]);
+        }
+
+        refresh();
+        setInterval(refresh, 5000); // Refresh every 5 seconds
+    </script>
+</body>
+
+</html>
