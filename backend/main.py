@@ -92,6 +92,28 @@ try:
 except ImportError:
     PERF_ENABLED = False
 
+# ── AI Defense Pillars ────────────────────────────────────────────────────────
+try:
+    from backend.ai_classifier import ai_classifier
+    AI_CLASSIFIER_ENABLED = True
+except ImportError as e:
+    AI_CLASSIFIER_ENABLED = False
+    logger.warning(f"⚠️ AI Classifier not available: {e}")
+
+try:
+    from backend.honeypot_engine import honeypot_engine
+    HONEYPOT_ENGINE_ENABLED = True
+except ImportError as e:
+    HONEYPOT_ENGINE_ENABLED = False
+    logger.warning(f"⚠️ Honeypot Engine not available: {e}")
+
+try:
+    from backend.emergency_response import emergency_response
+    EMERGENCY_ENABLED = True
+except ImportError as e:
+    EMERGENCY_ENABLED = False
+    logger.warning(f"⚠️ Emergency Response not available: {e}")
+
 # ── Config ────────────────────────────────────────────────────────────────────
 SERVER_HOST = os.getenv("SERVER_HOST", "http://localhost")
 _cors_raw   = os.getenv(
@@ -298,24 +320,81 @@ async def security_middleware(request: Request, call_next):
                 headers={"Retry-After": str(info["retry_after"])},
             )
 
-    # 4. Payload inspection (GET query string + headers)
+    # 4. AI CLASSIFICATION — The brain of Brahmastra
+    ai_result = None
+    if AI_CLASSIFIER_ENABLED:
+        user_agent = request.headers.get("user-agent", "")
+        query_str = str(request.url.query)
+        ai_result = ai_classifier.classify(
+            ip=client_ip, path=path, method=request.method,
+            user_agent=user_agent, query_string=query_str,
+        )
+
+        # CRITICAL → Trigger emergency response
+        if ai_result.label == "critical" and EMERGENCY_ENABLED:
+            logger.critical(f"🚨 CRITICAL THREAT from {client_ip}: {ai_result.attack_type} (score: {ai_result.score})")
+            # Run emergency in background thread so we can still respond
+            import threading
+            threading.Thread(
+                target=emergency_response.trigger_emergency,
+                args=(f"AI detected critical threat: {ai_result.attack_type}", client_ip, ai_result.score, ai_result.attack_type),
+                daemon=True,
+            ).start()
+            return Response(content="blocked", status_code=403, media_type="text/plain")
+
+        # ATTACK → Redirect to honeypot (attacker thinks they're in real server)
+        if ai_result.label == "attack" and HONEYPOT_ENGINE_ENABLED:
+            honeypot_resp = honeypot_engine.trap_request(
+                ip=client_ip, method=request.method, path=path,
+                headers=dict(request.headers),
+                query_string=query_str,
+                ai_score=ai_result.score,
+                attack_type=ai_result.attack_type,
+            )
+            return Response(
+                content=honeypot_resp["body"],
+                status_code=honeypot_resp["status_code"],
+                media_type=honeypot_resp["content_type"],
+            )
+
+    # 5. Payload inspection (GET query string + headers)
     if THREAT_ENGINE_ENABLED:
         query_str = str(request.url.query)
         attack = threat_engine.inspect_payload(client_ip, path, query=query_str)
         if attack:
-            logger.warning(f"🔴 Payload attack [{attack}] from {client_ip} → {path}")
+            # If AI is enabled, also record this in the honeypot
+            if HONEYPOT_ENGINE_ENABLED:
+                honeypot_resp = honeypot_engine.trap_request(
+                    ip=client_ip, method=request.method, path=path,
+                    headers=dict(request.headers),
+                    query_string=query_str,
+                    attack_type=attack,
+                )
+                return Response(
+                    content=honeypot_resp["body"],
+                    status_code=honeypot_resp["status_code"],
+                    media_type=honeypot_resp["content_type"],
+                )
             return JSONResponse(
                 status_code=400,
                 content={"detail": "Malicious request detected and blocked."},
             )
 
-    # 5. Performance tracking
+    # 6. Performance tracking
     _start = time.time()
     response = await call_next(request)
     duration_ms = (time.time() - _start) * 1000
 
     if PERF_ENABLED:
         perf_tracker.record(request.method, path, response.status_code, duration_ms)
+
+    # Feed response status back to AI classifier
+    if AI_CLASSIFIER_ENABLED and ai_result:
+        ai_classifier.classify(
+            ip=client_ip, path=path, method=request.method,
+            user_agent=request.headers.get("user-agent", ""),
+            status_code=response.status_code,
+        )
 
     return response
 
@@ -393,6 +472,19 @@ async def startup_event():
     logger.info(f"   ANOMALY_ML   : {ANOMALY_ENABLED}")
     logger.info(f"   BACKUP       : {BACKUP_ENABLED}")
     logger.info(f"   PERF_TRACKER : {PERF_ENABLED}")
+    logger.info(f"   AI_CLASSIFIER: {AI_CLASSIFIER_ENABLED}")
+    logger.info(f"   HONEYPOT_ENG : {HONEYPOT_ENGINE_ENABLED}")
+    logger.info(f"   EMERGENCY    : {EMERGENCY_ENABLED}")
+
+    # Register emergency response callbacks
+    if EMERGENCY_ENABLED:
+        emergency_response.register_callbacks(
+            kill_switch=threat_engine.activate_kill_switch if THREAT_ENGINE_ENABLED else None,
+            honeypot_save=honeypot_engine.save_all_evidence if HONEYPOT_ENGINE_ENABLED else None,
+            backup_create=backup_manager.create_backup if BACKUP_ENABLED else None,
+        )
+        logger.info("✅ Emergency response callbacks registered")
+
     logger.info("✅ Brahmastra v2.0.0 ready")
 
 
@@ -845,6 +937,85 @@ async def get_incidents(limit: int = 50, email: str = Depends(get_current_user_e
 async def create_incident(incident: Incident, email: str = Depends(get_current_user_email)):
     incidents.append(incident.dict())
     return {"status": "created", "incident": incident}
+
+
+# ============================================================================
+# AI DEFENSE SYSTEM — 3 Pillars
+# ============================================================================
+
+@app.get("/api/ai/stats")
+async def ai_classifier_stats(email: str = Depends(get_current_user_email)):
+    """Get AI classifier statistics."""
+    if not AI_CLASSIFIER_ENABLED:
+        return {"enabled": False}
+    return ai_classifier.get_stats()
+
+
+@app.get("/api/ai/classify/{ip}")
+async def ai_classify_ip(ip: str, email: str = Depends(get_current_user_email)):
+    """Get detailed AI profile for a specific IP."""
+    if not AI_CLASSIFIER_ENABLED:
+        return {"enabled": False}
+    profile = ai_classifier.get_ip_profile(ip)
+    if not profile:
+        return {"error": "IP not found in classifier"}
+    return profile
+
+
+@app.get("/api/ai/recent")
+async def ai_recent_classifications(limit: int = 50, email: str = Depends(get_current_user_email)):
+    """Get recent AI classifications."""
+    if not AI_CLASSIFIER_ENABLED:
+        return []
+    return ai_classifier.get_recent_classifications(limit=limit)
+
+
+@app.get("/api/honeypot/engine/stats")
+async def honeypot_engine_stats(email: str = Depends(get_current_user_email)):
+    """Get honeypot engine statistics."""
+    if not HONEYPOT_ENGINE_ENABLED:
+        return {"enabled": False}
+    return honeypot_engine.get_stats()
+
+
+@app.get("/api/honeypot/engine/session/{ip}")
+async def honeypot_session(ip: str, email: str = Depends(get_current_user_email)):
+    """Get honeypot session for a specific attacker IP."""
+    if not HONEYPOT_ENGINE_ENABLED:
+        return {"enabled": False}
+    session = honeypot_engine.get_session(ip)
+    if not session:
+        return {"error": "No session found for this IP"}
+    return session
+
+
+@app.post("/api/honeypot/engine/save-evidence")
+async def save_honeypot_evidence(email: str = Depends(get_current_user_email)):
+    """Force save all honeypot evidence."""
+    if not HONEYPOT_ENGINE_ENABLED:
+        return {"enabled": False}
+    saved = honeypot_engine.save_all_evidence()
+    return {"saved_files": len(saved), "files": saved}
+
+
+@app.get("/api/emergency/status")
+async def emergency_status(email: str = Depends(get_current_user_email)):
+    """Get emergency response system status."""
+    if not EMERGENCY_ENABLED:
+        return {"enabled": False}
+    return emergency_response.get_status()
+
+
+@app.post("/api/emergency/trigger")
+async def trigger_emergency(email: str = Depends(get_current_user_email)):
+    """Manually trigger emergency response (ADMIN ONLY — nuclear option)."""
+    if not EMERGENCY_ENABLED:
+        return {"enabled": False}
+    result = emergency_response.trigger_emergency(
+        reason=f"Manual trigger by admin: {email}",
+        attacker_ip="manual",
+    )
+    return result
 
 
 # ============================================================================
