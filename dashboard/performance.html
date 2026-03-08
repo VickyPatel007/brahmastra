@@ -540,7 +540,20 @@
             if (r.status === 401) {
                 const ok = await refreshToken(); if (!ok) { localStorage.clear(); window.location.href = 'login.html'; return null }
                 r = await fetch(API_URL + path, { headers: headers(), ...opts })
-            } return r;
+            }
+            if (r.status === 403) {
+                document.body.innerHTML = `<div style="text-align:center;padding:100px;color:#ef4444;font-family:sans-serif">
+                    <h1>🚨 SECURITY ALERT 🚨</h1><br>
+                    <h2>Your IP Address has been permanently banned.</h2><br>
+                    <p>The AI Threat Detection Engine detected a DDoS or brute force attack originating from your network.</p>
+                </div>`;
+                return null;
+            }
+            if (r.status === 429) {
+                alert("DDOS PROTECTION: You are being rate limited. Please slow down.");
+                return null;
+            }
+            return r;
         }
 
         // ── Performance Stats ──

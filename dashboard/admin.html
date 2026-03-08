@@ -653,10 +653,45 @@
             try { return JSON.parse(atob(t.split('.')[1])); } catch { return null; }
         }
 
+        async function refreshToken() {
+            try {
+                const r = await fetch(`${API_URL}/api/refresh`, { method: 'POST', headers: headers() });
+                if (!r.ok) throw new Error('Failed to refresh token');
+                const d = await r.json();
+                token = d.token;
+                localStorage.setItem('token', token);
+                return true;
+            } catch (e) {
+                console.error('Token refresh failed:', e);
+                return false;
+            }
+        }
+
+        async function apiFetch(path, opts = {}) {
+            let r = await fetch(API_URL + path, { headers: headers(), ...opts });
+            if (r.status === 401) {
+                const ok = await refreshToken(); if (!ok) { localStorage.clear(); window.location.href = 'login.html'; return null }
+                r = await fetch(API_URL + path, { headers: headers(), ...opts })
+            }
+            if (r.status === 403) {
+                document.body.innerHTML = `<div style="text-align:center;padding:100px;color:#ef4444;font-family:sans-serif">
+                    <h1>🚨 SECURITY ALERT 🚨</h1><br>
+                    <h2>Your IP Address has been permanently banned.</h2><br>
+                    <p>The AI Threat Detection Engine detected a DDoS or brute force attack originating from your network.</p>
+                </div>`;
+                return null;
+            }
+            if (r.status === 429) {
+                alert("DDOS PROTECTION: You are being rate limited. Please slow down.");
+                return null;
+            }
+            return r;
+        }
+
         async function loadBannedIPs() {
             try {
-                const r = await fetch(`${API}/api/admin/banned-ips`, { headers: headers() });
-                if (r.status === 403) { window.location.href = 'index.html'; return; }
+                const r = await apiFetch(`/api/admin/banned-ips`);
+                if (!r) return; // apiFetch handled 401, 403, 429
                 const data = await r.json();
                 document.getElementById('banCount').textContent = data.count || 0;
                 const tbody = document.getElementById('bannedTable');
