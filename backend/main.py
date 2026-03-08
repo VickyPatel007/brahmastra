@@ -519,6 +519,7 @@ async def register(request: Request, user: UserCreate, db: Session = Depends(get
 
     user_count = db.query(User).count()
     verification_token = str(uuid.uuid4())
+    print(f"DEBUG REGISTER: email={user.email}, password_len={len(user.password)}, password_type={type(user.password)}")
     db_user = User(
         email=user.email,
         hashed_password=get_password_hash(user.password),
@@ -565,6 +566,7 @@ async def login(request: Request, user: UserLogin, db: Session = Depends(get_db)
 
     # Constant-time lookup to prevent email enumeration timing attacks
     db_user = db.query(User).filter(User.email == user.email).first()
+    print(f"DEBUG LOGIN: email={user.email}, password_len={len(user.password)}, password_type={type(user.password)}")
     password_ok = db_user and verify_password(user.password, db_user.hashed_password)
 
     if not db_user or not password_ok:
