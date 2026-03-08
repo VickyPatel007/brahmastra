@@ -12,6 +12,7 @@ python-multipart>=0.0.20
 # Auth
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
+bcrypt<4.0.0  # Required to prevent passlib ValueError (password > 72 bytes bug)
 
 # Rate limiting
 slowapi>=0.1.9
