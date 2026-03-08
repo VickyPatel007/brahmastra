@@ -255,9 +255,19 @@ class AITrafficClassifier:
                 "ip": ip,
                 "label": label,
                 "score": round(total_score, 1),
+                "timestamp_unix": now,
                 "timestamp": datetime.now().isoformat(),
                 "attack_type": attack_type,
             })
+
+            # ── Anti-Memory Exhaustion (LRU-ish limit) ──
+            if len(self._ip_profiles) > 10000:
+                # Randomly pop an item to prevent memory blowout during spoofed IP DDoS
+                try:
+                    k = next(iter(self._ip_profiles))
+                    del self._ip_profiles[k]
+                except StopIteration:
+                    pass
 
         return result
 
@@ -493,33 +503,41 @@ class AITrafficClassifier:
 
     def get_stats(self) -> Dict:
         """Get AI classifier statistics."""
+        now_unix = time.time()
+        
+        # Fast copy/extract under lock
         with self._lock:
-            # Count active classifications
-            now = time.time()
-            recent = [c for c in self._classifications
-                     if datetime.fromisoformat(c["timestamp"]).timestamp() > now - 300]
-
-            attack_types = defaultdict(int)
-            for c in recent:
-                if c["attack_type"]:
-                    attack_types[c["attack_type"]] += 1
-
-            # Top threatened IPs
-            threatened_ips = sorted(
-                [(ip, p.last_score, p.last_classification, p.total_requests)
+            # Only use pre-calculated unix timestamps, no slow fromisoformat parsing!
+            recent = [c for c in self._classifications if c.get("timestamp_unix", 0) > now_unix - 300]
+            
+            total_classified = self._total_classified
+            attack_count = self._attack_count
+            normal_count = self._normal_count
+            
+            # Fast extraction of threatened IPs
+            threatened_ips_unsorted = [
+                (ip, p.last_score, p.last_classification, p.total_requests)
                  for ip, p in self._ip_profiles.items()
-                 if p.last_score >= SCORE_SUSPICIOUS],
-                key=lambda x: x[1],
-                reverse=True
-            )[:10]
+                 if p.last_score >= SCORE_SUSPICIOUS
+            ]
 
-            return {
-                "total_classified": self._total_classified,
-                "total_attacks_detected": self._attack_count,
-                "total_normal": self._normal_count,
-                "detection_rate": round(
-                    (self._attack_count / max(1, self._total_classified)) * 100, 1
-                ),
+        # Heavy processing (sorting) OUTSIDE the lock
+        attack_types = defaultdict(int)
+        for c in recent:
+            if c.get("attack_type"):
+                attack_types[c["attack_type"]] += 1
+
+        threatened_ips = sorted(
+            threatened_ips_unsorted,
+            key=lambda x: x[1],
+            reverse=True
+        )[:10]
+
+        return {
+            "total_classified": total_classified,
+            "total_attacks_detected": attack_count,
+            "total_normal": normal_count,
+            "detection_rate": round((attack_count / max(1, total_classified)) * 100, 1),
                 "recent_5min": {
                     "total": len(recent),
                     "attacks": sum(1 for c in recent if c["label"] in ("attack", "critical")),

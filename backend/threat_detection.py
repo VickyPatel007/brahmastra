@@ -216,6 +216,16 @@ class ThreatDetectionEngine:
             if rps >= DDOS_BURST_LIMIT:
                 self._ban_ip(ip, f"DDoS burst {rps:.0f} req/s")
                 return True
+                
+            # Anti-Memory Exhaustion for highly randomized spoofed IPs
+            if len(self._burst_tracker) > 10000:
+                try:
+                    k = next(iter(self._burst_tracker))
+                    if k != ip: # don't delete what we just added
+                        del self._burst_tracker[k]
+                except StopIteration:
+                    pass
+                    
             return False
 
     # ── Payload Inspection ────────────────────────────────────────────────────
