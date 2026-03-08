@@ -884,8 +884,8 @@
 
         async function fetchStats() {
             try {
-                const res = await fetch(`${API_URL}/api/stats`, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (!res.ok) return;
+                const res = await apiFetch('/api/stats');
+                if (!res || !res.ok) return;
                 const data = await res.json();
                 document.getElementById('metricsCount').textContent = (data.metrics_count ?? '--').toLocaleString();
                 document.getElementById('threatsCount').textContent = (data.threats_count ?? '--').toLocaleString();

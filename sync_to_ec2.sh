@@ -5,7 +5,7 @@
 # ═══════════════════════════════════════════════════════════════
 
 EC2_USER="ubuntu"
-EC2_IP="3.6.36.97"   # ← UPDATE if IP changes
+EC2_IP="13.202.18.214"   # Elastic IP
 KEY_FILE="./brahmastra-key.pem"
 REMOTE_DIR="/home/ubuntu/brahmastra"
 
@@ -26,9 +26,19 @@ scp -i "$KEY_FILE" -o StrictHostKeyChecking=no \
     backend/self_healing.py \
     backend/logger.py \
     backend/requirements.txt \
+    backend/ai_classifier.py \
+    backend/alerts.py \
+    backend/anomaly_detection.py \
+    backend/backup_system.py \
+    backend/billing.py \
+    backend/emergency_response.py \
+    backend/honeypot_engine.py \
+    backend/multi_server.py \
+    backend/performance.py \
+    backend/rate_limiter.py \
     "$EC2_USER@$EC2_IP:$REMOTE_DIR/backend/"
 
-# 2. Sync dashboard
+# 2. Sync dashboard (ALL pages)
 echo "📁 Syncing dashboard..."
 scp -i "$KEY_FILE" -o StrictHostKeyChecking=no \
     dashboard/index.html \
@@ -36,10 +46,20 @@ scp -i "$KEY_FILE" -o StrictHostKeyChecking=no \
     dashboard/forgot-password.html \
     dashboard/reset-password.html \
     dashboard/verify-email.html \
+    dashboard/ai-defense.html \
+    dashboard/admin.html \
+    dashboard/servers.html \
+    dashboard/billing.html \
+    dashboard/audit-log.html \
+    dashboard/performance.html \
     "$EC2_USER@$EC2_IP:$REMOTE_DIR/dashboard/"
 
-# 3. Sync setup script
-echo "📁 Syncing setup script..."
+# 3. Sync deploy configs
+echo "📁 Syncing deploy configs..."
+scp -i "$KEY_FILE" -o StrictHostKeyChecking=no \
+    deploy/brahmastra_nginx.conf \
+    deploy/brahmastra.service \
+    "$EC2_USER@$EC2_IP:$REMOTE_DIR/deploy/"
 scp -i "$KEY_FILE" -o StrictHostKeyChecking=no \
     setup_phase3_ec2.sh \
     "$EC2_USER@$EC2_IP:$REMOTE_DIR/"

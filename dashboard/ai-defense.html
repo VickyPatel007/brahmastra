@@ -532,16 +532,51 @@
 
     <script>
         const BASE = window.location.origin;
-        const token = localStorage.getItem('jwt_token');
+        let token = localStorage.getItem('jwt_token');
+        let refreshToken = localStorage.getItem('refresh_token');
+        let tokenExpiresAt = parseInt(localStorage.getItem('token_expires_at') || '0');
 
         if (!token) { window.location.href = 'login.html'; }
 
-        const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+        function getAuthHeaders() {
+            return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+        }
+
+        // ── Token Auto-Refresh ──
+        async function refreshAccessToken() {
+            if (!refreshToken) return false;
+            try {
+                const res = await fetch(`${BASE}/api/auth/refresh`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh_token: refreshToken }),
+                });
+                if (!res.ok) throw new Error('Refresh failed');
+                const data = await res.json();
+                token = data.access_token;
+                refreshToken = data.refresh_token;
+                tokenExpiresAt = Date.now() + data.expires_in * 1000;
+                localStorage.setItem('jwt_token', token);
+                localStorage.setItem('refresh_token', refreshToken);
+                localStorage.setItem('token_expires_at', tokenExpiresAt);
+                console.log('✅ AI Defense: Token refreshed');
+                return true;
+            } catch (e) {
+                console.error('Token refresh failed:', e);
+                return false;
+            }
+        }
 
         async function fetchAPI(endpoint) {
             try {
-                const res = await fetch(`${BASE}${endpoint}`, { headers });
-                if (res.status === 401) { window.location.href = 'login.html'; return null; }
+                const res = await fetch(`${BASE}${endpoint}`, { headers: getAuthHeaders() });
+                if (res.status === 401) {
+                    const refreshed = await refreshAccessToken();
+                    if (!refreshed) { window.location.href = 'login.html'; return null; }
+                    const retryRes = await fetch(`${BASE}${endpoint}`, { headers: getAuthHeaders() });
+                    if (!retryRes.ok) return null;
+                    return await retryRes.json();
+                }
                 if (!res.ok) return null;
                 return await res.json();
             } catch (e) { return null; }
@@ -702,7 +737,7 @@
             document.getElementById('emergencyBtn').textContent = '⏳ EXECUTING...';
 
             try {
-                const res = await fetch(`${BASE}/api/emergency/trigger`, { method: 'POST', headers });
+                const res = await fetch(`${BASE}/api/emergency/trigger`, { method: 'POST', headers: getAuthHeaders() });
                 const data = await res.json();
                 alert('🚨 Emergency response executed!\n\n' + JSON.stringify(data.steps, null, 2));
             } catch (e) {
