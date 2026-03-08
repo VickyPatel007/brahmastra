@@ -336,6 +336,20 @@
                     body: JSON.stringify({ email, password })
                 });
 
+                if (response.status === 403) {
+                    const text = await response.text();
+                    showError(text === 'blocked' ? 'SECURITY ALERT: Your IP is permanently banned due to suspicious activity.' : 'Access denied.');
+                    btn.disabled = false;
+                    btn.innerHTML = 'Login';
+                    return;
+                }
+                if (response.status === 429) {
+                    showError('DDOS PROTECTION: Rate limit exceeded. Please slow down.');
+                    btn.disabled = false;
+                    btn.innerHTML = 'Login';
+                    return;
+                }
+
                 const data = await response.json();
 
                 if (response.ok) {
@@ -357,6 +371,7 @@
                     btn.innerHTML = 'Login';
                 }
             } catch (error) {
+                console.error("Login fetch error:", error);
                 showError('Connection error. Please check if the API is running.');
                 btn.disabled = false;
                 btn.innerHTML = 'Login';
@@ -388,6 +403,16 @@
                     })
                 });
 
+                if (response.status === 403) {
+                    const text = await response.text();
+                    showError(text === 'blocked' ? 'SECURITY ALERT: Your IP is permanently banned due to suspicious activity.' : 'Access denied.');
+                    return;
+                }
+                if (response.status === 429) {
+                    showError('DDOS PROTECTION: Rate limit exceeded. Please slow down.');
+                    return;
+                }
+
                 const data = await response.json();
 
                 if (response.ok) {
@@ -400,6 +425,7 @@
                     showError(data.detail || 'Registration failed. Email may already exist.');
                 }
             } catch (error) {
+                console.error("Register fetch error:", error);
                 showError('Connection error. Please check if the API is running.');
             } finally {
                 btn.disabled = false;
