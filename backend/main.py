@@ -284,6 +284,17 @@ async def security_middleware(request: Request, call_next):
     client_ip = get_client_ip(request)
     path      = str(request.url.path)
 
+    def attach_cors(resp):
+        origin = request.headers.get("origin")
+        if origin:
+            resp.headers["Access-Control-Allow-Origin"] = origin
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
+        return resp
+
+    # Bypass security checks for CORS preflight
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
     # Never block whitelisted admin IPs
     if client_ip in WHITELISTED_IPS:
         _start = time.time()
@@ -296,12 +307,12 @@ async def security_middleware(request: Request, call_next):
     if THREAT_ENGINE_ENABLED:
         is_banned, seconds_left = threat_engine.is_ip_banned(client_ip)
         if is_banned:
-            return Response(content="blocked", status_code=403, media_type="text/plain")
+            return attach_cors(Response(content="blocked", status_code=403, media_type="text/plain"))
 
     # 2. DDoS burst check — FAST REJECT
     if THREAT_ENGINE_ENABLED:
         if threat_engine.check_ddos(client_ip):
-            return Response(content="rate limited", status_code=429, media_type="text/plain")
+            return attach_cors(Response(content="rate limited", status_code=429, media_type="text/plain"))
 
     # 3. Rate limit check
     if RATE_LIMITER_ENABLED:
@@ -310,7 +321,7 @@ async def security_middleware(request: Request, call_next):
         if not allowed:
             reason = info.get("reason", "rate_limited")
             logger.warning(f"🚦 Rate limited [{reason}]: {client_ip} → {category}")
-            return JSONResponse(
+            return attach_cors(JSONResponse(
                 status_code=429,
                 content={
                     "detail": "Too many requests. Please slow down.",
@@ -318,7 +329,7 @@ async def security_middleware(request: Request, call_next):
                     "category": info["category"],
                 },
                 headers={"Retry-After": str(info["retry_after"])},
-            )
+            ))
 
     # 4. AI CLASSIFICATION — The brain of Brahmastra
     ai_result = None
@@ -340,7 +351,7 @@ async def security_middleware(request: Request, call_next):
                 args=(f"AI detected critical threat: {ai_result.attack_type}", client_ip, ai_result.score, ai_result.attack_type),
                 daemon=True,
             ).start()
-            return Response(content="blocked", status_code=403, media_type="text/plain")
+            return attach_cors(Response(content="blocked", status_code=403, media_type="text/plain"))
 
         # ATTACK → Redirect to honeypot (attacker thinks they're in real server)
         if ai_result.label == "attack" and HONEYPOT_ENGINE_ENABLED:
@@ -351,11 +362,11 @@ async def security_middleware(request: Request, call_next):
                 ai_score=ai_result.score,
                 attack_type=ai_result.attack_type,
             )
-            return Response(
+            return attach_cors(Response(
                 content=honeypot_resp["body"],
                 status_code=honeypot_resp["status_code"],
                 media_type=honeypot_resp["content_type"],
-            )
+            ))
 
     # 5. Payload inspection (GET query string + headers)
     if THREAT_ENGINE_ENABLED:
@@ -370,17 +381,17 @@ async def security_middleware(request: Request, call_next):
                     query_string=query_str,
                     attack_type=attack,
                 )
-                return Response(
+                return attach_cors(Response(
                     content=honeypot_resp["body"],
                     status_code=honeypot_resp["status_code"],
                     media_type=honeypot_resp["content_type"],
-                )
-            return JSONResponse(
+                ))
+            return attach_cors(JSONResponse(
                 status_code=400,
                 content={"detail": "Malicious request detected and blocked."},
-            )
+            ))
 
-    # 6. Performance tracking
+    # All checks passed, proceed to endpoint
     _start = time.time()
     response = await call_next(request)
     duration_ms = (time.time() - _start) * 1000
