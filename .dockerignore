@@ -1,0 +1,55 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*.egg-info
+venv/
+env/
+*.so
+
+# Virtual environments
+backend/venv/
+
+# Terraform
+infrastructure/
+.terraform/
+*.tfstate*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets (NEVER include in image)
+*.pem
+*.key
+.env
+secrets.json
+brahmastra-key.pem
+
+# Deploy scripts (not needed in container)
+deploy*.sh
+setup*.sh
+paste_on_ec2.sh
+sync_to_ec2.sh
+fix_service.sh
+start_backend.sh
+create_users_table.sh
+init_database.sh
+
+# Docs (not needed in container)
+*.md
+!README.md
+
+# Tests (not needed in production image)
+tests/
+
+# Logs
+*.log
+logs/

@@ -65,10 +65,10 @@ resource "aws_security_group" "rds_sg" {
   }
 }
 
-# Random password for RDS
+# Random password for RDS (No special chars to avoid systemd parsing issues)
 resource "random_password" "db_password" {
   length  = 16
-  special = true
+  special = false
 }
 
 # RDS PostgreSQL Instance (Free Tier)

@@ -1,0 +1,109 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Brahmastra CI/CD Pipeline
+# ─────────────────────────────────────────────────────────────────────────────
+# Runs on every push to main and every PR.
+# Jobs: Test → Docker Build → Deploy (manual only)
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: Brahmastra CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # ── Job 1: Run Tests ──────────────────────────────────────────────────────
+  test:
+    name: 🧪 Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run tests
+        env:
+          JWT_SECRET_KEY: "ci-test-secret-key"
+          DATABASE_URL: "sqlite:///./test.db"
+          BAN_STATE_FILE: "/tmp/ci_test_bans.json"
+        run: |
+          python -m pytest tests/ -v --tb=short --junitxml=test-results.xml
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: test-results.xml
+
+  # ── Job 2: Build Docker Image ─────────────────────────────────────────────
+  docker:
+    name: 🐳 Docker Build
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t brahmastra:${{ github.sha }} .
+
+      - name: Verify image starts
+        run: |
+          docker run -d --name brahmastra-test \
+            -p 8000:8000 \
+            -e DATABASE_URL="sqlite:///./test.db" \
+            -e JWT_SECRET_KEY="ci-docker-test" \
+            brahmastra:${{ github.sha }}
+          sleep 5
+          curl -f http://localhost:8000/health || exit 1
+          docker stop brahmastra-test
+
+  # ── Job 3: Deploy to EC2 (Manual Trigger Only) ────────────────────────────
+  deploy:
+    name: 🚀 Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: [test, docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/brahmastra
+            git pull origin main
+            sudo systemctl restart brahmastra
+            sleep 3
+            curl -f http://localhost:8000/health && echo "✅ Deploy successful!" || echo "❌ Deploy failed!"
