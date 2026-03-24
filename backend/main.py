@@ -739,7 +739,7 @@ async def get_metrics_history(
             rows = db.query(Metric).order_by(Metric.timestamp.desc()).limit(limit).all()
             return [{"id": m.id, "cpu_percent": m.cpu_percent, "memory_percent": m.memory_percent,
                      "disk_percent": m.disk_percent, "status": m.status,
-                     "timestamp": m.timestamp.isoformat()} for m in reversed(rows)]
+                     "timestamp": m.timestamp.isoformat() if m.timestamp else None} for m in reversed(rows)]
         except Exception as e:
             logger.error(f"❌ Metrics history failed: {e}")
             return []
@@ -784,7 +784,7 @@ async def get_threat_history(
         try:
             rows = db.query(ThreatScore).order_by(ThreatScore.timestamp.desc()).limit(limit).all()
             return [{"id": s.id, "threat_score": s.threat_score, "threat_level": s.threat_level,
-                     "timestamp": s.timestamp.isoformat()} for s in reversed(rows)]
+                     "timestamp": s.timestamp.isoformat() if s.timestamp else None} for s in reversed(rows)]
         except Exception as e:
             logger.error(f"❌ Threat history: {e}")
     return []
@@ -900,7 +900,7 @@ async def get_events(
                 query = query.filter(SystemEvent.event_type == event_type)
             rows = query.order_by(SystemEvent.timestamp.desc()).limit(limit).all()
             return [{"id": e.id, "event_type": e.event_type, "description": e.description,
-                     "severity": e.severity, "timestamp": e.timestamp.isoformat()}
+                     "severity": e.severity, "timestamp": e.timestamp.isoformat() if e.timestamp else None}
                     for e in reversed(rows)]
         except Exception as e:
             logger.error(f"❌ Events: {e}")
